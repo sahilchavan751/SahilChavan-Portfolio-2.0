@@ -36,19 +36,22 @@ export default function ProfileSection() {
       canvas.height = rect.height;
     }
 
-    // Cover-fit the image into the canvas (like object-fit: cover)
+    // Contain-fit the image (show full image, centered, no cropping)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const imgRatio = img.naturalWidth / img.naturalHeight;
     const canvasRatio = canvas.width / canvas.height;
-    let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+    let dw, dh, dx, dy;
     if (imgRatio > canvasRatio) {
-      sw = img.naturalHeight * canvasRatio;
-      sx = (img.naturalWidth - sw) / 2;
+      dw = canvas.width;
+      dh = canvas.width / imgRatio;
     } else {
-      sh = img.naturalWidth / canvasRatio;
-      sy = (img.naturalHeight - sh) / 2;
+      dh = canvas.height;
+      dw = canvas.height * imgRatio;
     }
+    dx = (canvas.width - dw) / 2;
+    dy = (canvas.height - dh) / 2;
 
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
   }, []);
 
   // Check if sequence exists
