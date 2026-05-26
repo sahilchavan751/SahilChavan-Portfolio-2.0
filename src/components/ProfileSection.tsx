@@ -1,14 +1,16 @@
  "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import RevealOnScroll from "./RevealOnScroll";
 
 const PROFILE_FRAME_COUNT = 120;
 
 export default function ProfileSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const currentFrameRef = useRef(0);
   const [sequenceAvailable, setSequenceAvailable] = useState<boolean | null>(null);
 
   const frameUrls = useMemo(() => {
@@ -18,16 +20,70 @@ export default function ProfileSection() {
     });
   }, []);
 
+  // Draw a specific frame onto the canvas
+  const drawFrame = useCallback((frameIndex: number) => {
+    const canvas = canvasRef.current;
+    const img = imagesRef.current[frameIndex];
+    if (!canvas || !img || !img.complete || !img.naturalWidth) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Match canvas internal size to displayed size for crisp rendering
+    const rect = canvas.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    // Cover-fit the image into the canvas (like object-fit: cover)
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const canvasRatio = canvas.width / canvas.height;
+    let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+    if (imgRatio > canvasRatio) {
+      sw = img.naturalHeight * canvasRatio;
+      sx = (img.naturalWidth - sw) / 2;
+    } else {
+      sh = img.naturalWidth / canvasRatio;
+      sy = (img.naturalHeight - sh) / 2;
+    }
+
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  }, []);
+
+  // Check if sequence exists
   useEffect(() => {
     if (!frameUrls.length) return;
-
-    // Verify the sequence exists before switching away from fallback.
     const probe = new Image();
     probe.onload = () => setSequenceAvailable(true);
     probe.onerror = () => setSequenceAvailable(false);
     probe.src = frameUrls[0];
   }, [frameUrls]);
 
+  // Preload ALL images into memory and pre-decode them
+  useEffect(() => {
+    if (sequenceAvailable !== true || !frameUrls.length) return;
+
+    const images: HTMLImageElement[] = [];
+    let loadedCount = 0;
+
+    frameUrls.forEach((url, i) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        loadedCount++;
+        // Draw the first frame as soon as it loads
+        if (i === 0) {
+          drawFrame(0);
+        }
+      };
+      images[i] = img;
+    });
+
+    imagesRef.current = images;
+  }, [frameUrls, sequenceAvailable, drawFrame]);
+
+  // Scroll handler — directly draws to canvas, no React state involved
   useEffect(() => {
     if (sequenceAvailable !== true) return;
 
@@ -39,8 +95,10 @@ export default function ProfileSection() {
       const progress = (start - rect.top) / (start - end);
       const clamped = Math.min(Math.max(progress, 0), 1);
       const frameIndex = Math.round(clamped * (frameUrls.length - 1));
-      if (imgRef.current && frameUrls[frameIndex]) {
-        imgRef.current.src = frameUrls[frameIndex];
+
+      if (frameIndex !== currentFrameRef.current) {
+        currentFrameRef.current = frameIndex;
+        drawFrame(frameIndex);
       }
     };
 
@@ -59,19 +117,7 @@ export default function ProfileSection() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [frameUrls, sequenceAvailable]);
-
-  useEffect(() => {
-    if (sequenceAvailable !== true || !frameUrls.length) return;
-
-    // Eagerly preload all frames in the background to prevent stuttering on production
-    frameUrls.forEach((url) => {
-      const img = new Image();
-      img.src = url;
-    });
-  }, [frameUrls, sequenceAvailable]);
-
-  const currentSrc = sequenceAvailable === true ? frameUrls[0] : "/images/profile_silhouette.png";
+  }, [frameUrls, sequenceAvailable, drawFrame]);
 
   return (
     <div ref={sectionRef}>
@@ -92,11 +138,17 @@ export default function ProfileSection() {
       </div>
 
       <div className="profile-image-container">
-        <img
-          ref={imgRef}
-          src={currentSrc}
-          alt="Profile Silhouette"
-        />
+        {sequenceAvailable === true ? (
+          <canvas
+            ref={canvasRef}
+            style={{ width: "100%", height: "100%", display: "block" }}
+          />
+        ) : (
+          <img
+            src="/images/profile_silhouette.png"
+            alt="Profile Silhouette"
+          />
+        )}
       </div>
 
       <div className="about-details about-right">

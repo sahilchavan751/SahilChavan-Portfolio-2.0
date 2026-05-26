@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -10,7 +10,9 @@ const FOOTER_FRAME_COUNT = 120;
 
 export default function Footer() {
   const footerRef = useRef<HTMLElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const currentFrameRef = useRef(0);
   const [sequenceAvailable, setSequenceAvailable] = useState<boolean | null>(null);
 
   const frameUrls = useMemo(() => {
@@ -20,13 +22,41 @@ export default function Footer() {
     });
   }, []);
 
+  // Draw a specific frame onto the canvas
+  const drawFrame = useCallback((frameIndex: number) => {
+    const canvas = canvasRef.current;
+    const img = imagesRef.current[frameIndex];
+    if (!canvas || !img || !img.complete || !img.naturalWidth) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    // Cover-fit the image (like object-fit: cover)
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const canvasRatio = canvas.width / canvas.height;
+    let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+    if (imgRatio > canvasRatio) {
+      sw = img.naturalHeight * canvasRatio;
+      sx = (img.naturalWidth - sw) / 2;
+    } else {
+      sh = img.naturalWidth / canvasRatio;
+      sy = (img.naturalHeight - sh) / 2;
+    }
+
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  }, []);
+
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
 
-    // Small delay to let layout settle after preloader
     const timer = setTimeout(() => {
       if (!footerRef.current) return;
-
       ScrollTrigger.refresh();
     }, 500);
 
@@ -36,6 +66,7 @@ export default function Footer() {
     };
   }, []);
 
+  // Check if sequence exists
   useEffect(() => {
     if (!frameUrls.length) return;
     const probe = new Image();
@@ -44,6 +75,27 @@ export default function Footer() {
     probe.src = frameUrls[0];
   }, [frameUrls]);
 
+  // Preload ALL images into memory
+  useEffect(() => {
+    if (sequenceAvailable !== true || !frameUrls.length) return;
+
+    const images: HTMLImageElement[] = [];
+
+    frameUrls.forEach((url, i) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        if (i === 0) {
+          drawFrame(0);
+        }
+      };
+      images[i] = img;
+    });
+
+    imagesRef.current = images;
+  }, [frameUrls, sequenceAvailable, drawFrame]);
+
+  // Scroll handler — directly draws to canvas, no React state involved
   useEffect(() => {
     if (sequenceAvailable !== true) return;
 
@@ -55,8 +107,10 @@ export default function Footer() {
       const progress = (start - rect.top) / (start - end);
       const clamped = Math.min(Math.max(progress, 0), 1);
       const frameIndex = Math.round(clamped * (frameUrls.length - 1));
-      if (imgRef.current && frameUrls[frameIndex]) {
-        imgRef.current.src = frameUrls[frameIndex];
+
+      if (frameIndex !== currentFrameRef.current) {
+        currentFrameRef.current = frameIndex;
+        drawFrame(frameIndex);
       }
     };
 
@@ -75,27 +129,16 @@ export default function Footer() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [frameUrls, sequenceAvailable]);
-
-  useEffect(() => {
-    if (sequenceAvailable !== true || !frameUrls.length) return;
-    
-    // Eagerly preload all frames in the background to prevent stuttering on production
-    frameUrls.forEach((url) => {
-      const img = new Image();
-      img.src = url;
-    });
-  }, [frameUrls, sequenceAvailable]);
-
-  const currentBgSrc = sequenceAvailable === true ? frameUrls[0] : "";
+  }, [frameUrls, sequenceAvailable, drawFrame]);
 
   return (
     <footer ref={footerRef} className="site-footer">
-      {currentBgSrc ? (
-        <div className="footer-frame-bg" aria-hidden="true">
-          <img ref={imgRef} src={currentBgSrc} alt="" />
-        </div>
-      ) : null}
+      <div className="footer-frame-bg" aria-hidden="true">
+        <canvas
+          ref={canvasRef}
+          style={{ width: "100%", height: "100%", display: "block" }}
+        />
+      </div>
       <div className="footer-container">
         <div className="footer-name footer-name-spacer" aria-hidden="true">
           Sahil
