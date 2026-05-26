@@ -3,17 +3,19 @@ import "./globals.css";
 import ClientShell from "@/components/ClientShell";
 
 export const metadata: Metadata = {
-  title: "Sahil | Creative Developer Portfolio",
-  description: "Design × Code. Bold, modern visuals and interfaces.",
+  title: "Sahil Chavan | Creative Developer Portfolio",
+  description: "A highly interactive, modern portfolio showcasing a multi-disciplinary approach to digital creation, blending coding, video editing, UI/UX design, and 3D animation.",
   openGraph: {
-    title: "Sahil – Creative Developer",
-    description: "Design × Code. Bold, modern visuals and interfaces.",
+    title: "Sahil Chavan | Creative Developer Portfolio",
+    description: "A highly interactive, modern portfolio showcasing a multi-disciplinary approach to digital creation, blending coding, video editing, UI/UX design, and 3D animation.",
     images: ["/og-image.png"],
-    url: "https://redbluvr69.github.io/portfolio/",
+    url: "https://sahilchavan-portfolio-20.vercel.app/",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
+    title: "Sahil Chavan | Creative Developer Portfolio",
+    description: "A highly interactive, modern portfolio showcasing a multi-disciplinary approach to digital creation, blending coding, video editing, UI/UX design, and 3D animation.",
     images: ["/og-image.png"],
   },
 };
