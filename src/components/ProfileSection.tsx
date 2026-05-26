@@ -7,7 +7,7 @@ import RevealOnScroll from "./RevealOnScroll";
 const PROFILE_FRAME_COUNT = 120;
 
 export default function ProfileSection() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [sequenceAvailable, setSequenceAvailable] = useState<boolean | null>(null);
 
