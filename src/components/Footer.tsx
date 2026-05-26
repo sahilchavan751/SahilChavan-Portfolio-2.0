@@ -10,7 +10,7 @@ const FOOTER_FRAME_COUNT = 120;
 
 export default function Footer() {
   const footerRef = useRef<HTMLElement>(null);
-  const [activeFrame, setActiveFrame] = useState(0);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [sequenceAvailable, setSequenceAvailable] = useState<boolean | null>(null);
 
   const frameUrls = useMemo(() => {
@@ -55,7 +55,9 @@ export default function Footer() {
       const progress = (start - rect.top) / (start - end);
       const clamped = Math.min(Math.max(progress, 0), 1);
       const frameIndex = Math.round(clamped * (frameUrls.length - 1));
-      setActiveFrame(frameIndex);
+      if (imgRef.current && frameUrls[frameIndex]) {
+        imgRef.current.src = frameUrls[frameIndex];
+      }
     };
 
     let rafId = 0;
@@ -85,13 +87,13 @@ export default function Footer() {
     });
   }, [frameUrls, sequenceAvailable]);
 
-  const currentBgSrc = sequenceAvailable === true ? frameUrls[activeFrame] : "";
+  const currentBgSrc = sequenceAvailable === true ? frameUrls[0] : "";
 
   return (
     <footer ref={footerRef} className="site-footer">
       {currentBgSrc ? (
         <div className="footer-frame-bg" aria-hidden="true">
-          <img src={currentBgSrc} alt="" />
+          <img ref={imgRef} src={currentBgSrc} alt="" />
         </div>
       ) : null}
       <div className="footer-container">

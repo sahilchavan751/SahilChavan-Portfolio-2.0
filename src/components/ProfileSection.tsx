@@ -7,8 +7,8 @@ import RevealOnScroll from "./RevealOnScroll";
 const PROFILE_FRAME_COUNT = 120;
 
 export default function ProfileSection() {
-  const sectionRef = useRef<HTMLDivElement | null>(null);
-  const [activeFrame, setActiveFrame] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [sequenceAvailable, setSequenceAvailable] = useState<boolean | null>(null);
 
   const frameUrls = useMemo(() => {
@@ -39,7 +39,9 @@ export default function ProfileSection() {
       const progress = (start - rect.top) / (start - end);
       const clamped = Math.min(Math.max(progress, 0), 1);
       const frameIndex = Math.round(clamped * (frameUrls.length - 1));
-      setActiveFrame(frameIndex);
+      if (imgRef.current && frameUrls[frameIndex]) {
+        imgRef.current.src = frameUrls[frameIndex];
+      }
     };
 
     let rafId = 0;
@@ -69,7 +71,7 @@ export default function ProfileSection() {
     });
   }, [frameUrls, sequenceAvailable]);
 
-  const currentSrc = sequenceAvailable === true ? frameUrls[activeFrame] : "/images/profile_silhouette.png";
+  const currentSrc = sequenceAvailable === true ? frameUrls[0] : "/images/profile_silhouette.png";
 
   return (
     <div ref={sectionRef}>
@@ -91,6 +93,7 @@ export default function ProfileSection() {
 
       <div className="profile-image-container">
         <img
+          ref={imgRef}
           src={currentSrc}
           alt="Profile Silhouette"
         />
