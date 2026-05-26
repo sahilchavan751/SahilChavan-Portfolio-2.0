@@ -62,15 +62,12 @@ export default function ProfileSection() {
   useEffect(() => {
     if (sequenceAvailable !== true || !frameUrls.length) return;
 
-    // Preload around the active frame for smoother forward/reverse scrubbing.
-    const preloadOffsets = [-4, -2, -1, 1, 2, 4, 6];
-    preloadOffsets.forEach((offset) => {
-      const idx = activeFrame + offset;
-      if (idx < 0 || idx >= frameUrls.length) return;
+    // Eagerly preload all frames in the background to prevent stuttering on production
+    frameUrls.forEach((url) => {
       const img = new Image();
-      img.src = frameUrls[idx];
+      img.src = url;
     });
-  }, [activeFrame, frameUrls, sequenceAvailable]);
+  }, [frameUrls, sequenceAvailable]);
 
   const currentSrc = sequenceAvailable === true ? frameUrls[activeFrame] : "/images/profile_silhouette.png";
 
